@@ -1,3 +1,4 @@
+// Ported from https://github.com/apple/pkl (Apache-2.0).
 package org.pkl.codegen.scala
 
 /** Options for [[ScalaCodeGenerator]].
