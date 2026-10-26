@@ -45,3 +45,40 @@ lazy val pkl = project
     // (needed by InMemoryScalaCompiler's forked dotc).
     Test / fork := true
   )
+
+// sbt binding, mirroring pkl-gradle's kotlinCodeGenerators (spec + cached task + wiring).
+lazy val pklSbt = project
+  .in(file("pkl-sbt"))
+  .enablePlugins(ScriptedPlugin)
+  .dependsOn(pkl)
+  .settings(
+    name := "pkl-sbt",
+    sbtPlugin := true,
+    // sbt plugins compile against sbt's own API jars; our 3.3.8 scalac cannot read sbt 2.0.11's
+    // 3.8.x TASTy (forward-incompatible), so build the plugin with sbt's Scala version.
+    // (The pkl project dep stays 3.3.8: newer scalac reads older TASTy fine.)
+    scalaVersion := "3.8.4"
+  )
+
+// Mill binding, mirroring pkl-gradle's kotlinCodeGenerators (trait + wiring).
+lazy val millPkl = project
+  .in(file("mill-pkl"))
+  .dependsOn(pkl)
+  .settings(
+    name := "mill-pkl",
+    // mill-libs 1.3.1 itself is built with Scala 3.9.0: older scalac cannot read its TASTy
+    // (forward-incompatible), so build this module with 3.9.0. (The pkl project dep stays 3.3.8:
+    // newer scalac reads older TASTy fine.)
+    scalaVersion := "3.9.0",
+    // mill-libs' pom carries a `scala-library:3.9.0` newer than our toolchain and a stale
+    // `scala-reflect:2.13.18` (which sbt rewrites to the phantom `scala-reflect:3.9.0`): exclude
+    // both and compile against the toolchain's own 2.13.x. Mill/$ivy consumers resolve the pom
+    // literally (no sbt rewrite) and are unaffected.
+    // mill also drags in coursier built for 2.13: readable bytecode scalac needs for mill
+    // signatures, so keep it — but drop its _2.13 stdlib dupes that clash with our _3 ones.
+    libraryDependencies += ("com.lihaoyi" %% "mill-libs-scalalib" % "1.3.1")
+      .exclude("org.scala-lang", "scala-reflect")
+      .exclude("org.scala-lang", "scala-library")
+      .exclude("org.scala-lang.modules", "scala-xml_2.13")
+      .exclude("org.scala-lang.modules", "scala-collection-compat_2.13")
+  )

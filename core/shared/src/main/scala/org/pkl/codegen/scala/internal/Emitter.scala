@@ -1,18 +1,3 @@
-/*
- * Copyright © 2026 the scala-pkl project authors. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.pkl.codegen.scala.internal
 
 import scala.collection.mutable
@@ -59,15 +44,12 @@ final class Emitter(val indent: String):
   def emit(line: String = ""): Unit =
     if line.isEmpty then body.append("\n")
     else
-      var i = 0
-      while i < level do
-        body.append(indent)
-        i += 1
+      body.append(indent * level)
       body.append(line).append("\n")
 
-  def indented(fn: => Unit): Unit =
+  def indented(block: => Unit): Unit =
     level += 1
-    try fn
+    try block
     finally level -= 1
 
   /** Renders `package ...`, the import block, then the body. */
@@ -81,7 +63,7 @@ final class Emitter(val indent: String):
         )
         .sorted
     if relevant.nonEmpty then
-      relevant.foreach(i => out.append(s"import $i\n"))
+      relevant.foreach(imported => out.append(s"import $imported\n"))
       out.append("\n")
     out.append(body.result())
     out.result()

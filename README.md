@@ -42,6 +42,7 @@ because `pkl-commons` is not published for this version). Project Scala: 3.3.x L
 
 ```bash
 sbt "coreJVM/test; pkl/test"          # JVM suites (10 core + 21 end-to-end)
+sbt pklSbt/scripted                    # sbt plugin: generate + file-exists + compile, in a real consumer build
 sbt coreJS/Test/compile                # Scala.js: sources + tests compile, fastLinkJS links
 sbt coreJS/test                        # needs a real Node.js (see below)
 sbt coreNative/test                    # links via clang, runs on a real binary (10 tests)
@@ -130,3 +131,46 @@ files.foreach { (name, contents) =>
 
 `CliScalaCodeGenerator` is the reference implementation of that loop. `pkl-config-scala`
 (native `Option`/enum decoding via `Mirror`) is a separate, future module.
+
+## Build plugins
+
+Like `pkl-gradle` in the Pkl repo (same shape: spec DSL → one cached task → in-process
+generator call → source-set wiring), this repo ships `pkl-sbt` (sbt 2.x `AutoPlugin`) and
+`pkl-mill` (Mill 1.x trait).
+
+sbt (`pkl-sbt`, verified end-to-end by a scripted test that generates and compiles):
+
+```scala
+// project/plugins.sbt
+addSbtPlugin("org.pkl-lang" % "pkl-sbt" % version)
+// build.sbt
+lazy val app = project.enablePlugins(PklPlugin).settings(
+  pklGenerators += PklGeneratorSpec(
+    sourceModules = Seq(file("src/main/pkl/birds.pkl")),
+    generateScaladoc = true,
+    renames = Map("org.foo" -> "com.foo")
+  )
+)
+```
+
+`pklGenerate` runs all specs (cached on input contents; options feed the cache key),
+`Compile / sourceGenerators` / `resourceGenerators` pick up the outputs, so `compile` just
+works. sbt 2 caches every task result, so file outputs travel as rel-path strings internally.
+
+Mill (`pkl-mill`, compiles against mill-libs 1.3.1; run it under mill 1.3.x):
+
+```scala
+// build.sc
+import $ivy.`org.pkl-lang::mill-pkl:0.1.0`
+import org.pkl.mill.PklScalaModule
+
+object app extends ScalaModule with PklScalaModule {
+  def scalaVersion = "3.3.8"
+  override def pklSources = Task.Sources(moduleDir / "somewhere-else")
+  override def pklGenerateScaladoc = Task { true }
+}
+```
+
+`pklGenerate` evaluates once and `generatedSources`/`resources` split the pair; mill's
+content-hashed tasks make regeneration (the Gradle `GatherImports` equivalent) automatic.
+Per-field `T` settings (`pklIndent`, `pklImplementSerializable`, …) keep caching granular.
