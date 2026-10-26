@@ -42,10 +42,16 @@ enum IrType:
   case MapOf(key: IrType, value: IrType)
   case OptionOf(base: IrType)
 
-  /** Reference to a user-defined class or type alias. `pkg` is the mapped
-    * package.
+  /** Reference to a user-defined class or type alias.
+    *
+    * `outer` is the enclosing wrapper for nested Pkl classes (the mapped module
+    * class name, e.g. `Mod` in `Mod.Person`); empty for top-level types (module
+    * classes, enums, type aliases). Nested references are always rendered
+    * qualified (`Outer.Inner`): the companion class cannot see the companion
+    * object's members unqualified, while a self-qualified reference resolves in
+    * every scope.
     */
-  case Ref(pkg: String, name: String, args: List[IrType])
+  case Ref(pkg: String, outer: String, name: String, args: List[IrType])
   case TypeVar(name: String)
 
 final case class IrTypeParam(name: String, variance: IrVariance)
@@ -122,8 +128,16 @@ enum IrModuleDecl:
 final case class IrModule(
     packageName: String,
     moduleTypeName: String,
+    /** Doc comment for the module wrapper (`object Mod`, or the module class's
+      * companion).
+      */
+    moduleDoc: Option[String],
     /** `None` when the module has no properties (renders as `object Mod`). */
     moduleClass: Option[IrClass],
+    /** Nested classes, rendered inside the `object Mod` wrapper / companion. */
     classes: List[IrClass],
+    /** Top-level declarations (Scala allows nested aliases, but top-level keeps
+      * them importable).
+      */
     decls: List[IrModuleDecl]
 )

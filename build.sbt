@@ -37,7 +37,11 @@ lazy val pkl = project
     name := "pkl-codegen-scala",
     libraryDependencies ++= Seq(
       "org.pkl-lang" % "pkl-core" % pklVersion,
+      "org.scala-lang" %% "scala3-compiler" % scala3 % Test,
       "org.scalameta" %% "munit" % "1.1.1" % Test
     ),
-    testFrameworks += new TestFramework("munit.Framework")
+    testFrameworks += new TestFramework("munit.Framework"),
+    // Fork tests so the context classloader carries the full test classpath
+    // (needed by InMemoryScalaCompiler's forked dotc).
+    Test / fork := true
   )

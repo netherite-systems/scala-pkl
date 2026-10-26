@@ -67,7 +67,9 @@ vacuous 0-test passes).
 
 Per module, `output` returns:
 
-- `scala/<pkg-path>/<Class>.scala` — all types as **top-level** declarations,
+- `scala/<pkg-path>/<Class>.scala` — the module wrapper (`object Mod`, or the module
+  class plus an `object Mod` companion when the module has properties) with nested classes;
+  enums and type aliases stay top-level,
 - `resources/META-INF/org/pkl/config/scala/mapper/classes/<module>.properties`
   (`org.pkl.config.scala.mapper.<pklQN>=<jvmFQN>`, for a future `pkl-config-scala` runtime),
 - `resources/META-INF/org/pkl/config/java/mapper/classes/<module>.properties` — same mappings
@@ -97,9 +99,12 @@ Per module, `output` returns:
 
 ## Divergences from pkl-codegen-kotlin (deliberate)
 
-1. **Flat layout.** Kotlin nests classes in `object Mod`; here every type is top-level in the mapped
-   package. Simpler imports; the only cost is a possible clash if two modules are renamed into one
-   package with identical class names.
+1. **Nesting via companion.** Like Kotlin, Pkl classes nest inside the `object Mod`
+   wrapper — or the module class's companion when the module has properties (nesting them
+   inside a `case class` would make them path-dependent inner classes). Nested references
+   always render qualified (`Mod.Person`): the companion class cannot see the companion
+   object's members unqualified, while a self-qualified reference resolves in every scope.
+   JVM names match Kotlin's shape (`my.Mod$Person`). Enums and type aliases stay top-level.
 2. **`Option[T]`** instead of nullable references.
 3. **No Spring Boot support** (no Scala equivalent); the option is omitted, not stubbed.
 4. **`@Generated`** maps to `javax.annotation.processing.Generated` (JDK built-in) since there is no

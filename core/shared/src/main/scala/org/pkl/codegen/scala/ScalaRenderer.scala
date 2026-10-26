@@ -29,14 +29,26 @@ final class ScalaRenderer(options: ScalaCodeGeneratorOptions):
 
   def renderModule(module: IrModule): String =
     val emitter = new Emitter(options.indent)
+    val escWrapper = Emitter.escape(module.moduleTypeName)
+    // Nested classes live in the wrapper so they stay statically accessible (nesting them inside
+    // a case class would make them path-dependent inner classes). Hence a module with properties
+    // renders as a class plus an `object Mod` companion holding the nested classes.
     module.moduleClass match
-      case Some(cls) => emitClass(emitter, cls)
-      case None      =>
-        emitter.emit(s"object ${Emitter.escape(module.moduleTypeName)}")
-
-    for cls <- module.classes do
-      emitter.emit()
-      emitClass(emitter, cls)
+      case Some(cls) =>
+        emitClass(emitter, cls)
+        if module.classes.nonEmpty then
+          emitter.emit()
+          emitDoc(emitter, module.moduleDoc)
+          emitter.emit(s"object $escWrapper:")
+          emitter.indented:
+            emitNested(emitter, module.classes)
+      case None =>
+        emitDoc(emitter, module.moduleDoc)
+        if module.classes.isEmpty then emitter.emit(s"object $escWrapper")
+        else
+          emitter.emit(s"object $escWrapper:")
+          emitter.indented:
+            emitNested(emitter, module.classes)
 
     for decl <- module.decls do
       emitter.emit()
@@ -45,6 +57,12 @@ final class ScalaRenderer(options: ScalaCodeGeneratorOptions):
         case IrModuleDecl.Alias(a) => emitTypeAlias(emitter, a)
 
     emitter.result(module.packageName)
+
+  private def emitNested(emitter: Emitter, classes: List[IrClass]): Unit =
+    var first = true
+    for cls <- classes do
+      if first then first = false else emitter.emit()
+      emitClass(emitter, cls)
 
   // --------------------------------------------------------------------------
   // classes
@@ -311,8 +329,9 @@ final class ScalaRenderer(options: ScalaCodeGeneratorOptions):
       case IrType.MapOf(key, value) =>
         s"Map[${renderType(key, emitter)}, ${renderType(value, emitter)}]"
       case IrType.OptionOf(base) => s"Option[${renderType(base, emitter)}]"
-      case IrType.Ref(pkg, name, args) =>
-        val base = emitter.reference(pkg, Emitter.escape(name))
+      case IrType.Ref(pkg, outer, name, args) =>
+        val escOuter = if outer.isEmpty then "" else Emitter.escape(outer)
+        val base = emitter.reference(pkg, escOuter, Emitter.escape(name))
         if args.isEmpty then base
         else base + args.map(renderType(_, emitter)).mkString("[", ", ", "]")
       case IrType.TypeVar(name) => Emitter.escape(name)

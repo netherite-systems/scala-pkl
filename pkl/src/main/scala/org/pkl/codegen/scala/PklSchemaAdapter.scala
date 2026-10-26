@@ -55,6 +55,7 @@ object PklSchemaAdapter:
       IrModule(
         packageName,
         moduleTypeName,
+        Option(moduleClass.getDocComment),
         if isGenerateModuleClass then
           Some(convertClass(moduleClass, isModuleClass = true))
         else None,
@@ -319,17 +320,17 @@ object PklSchemaAdapter:
             if params.isEmpty then Nil
             else if args.isEmpty then List.fill(params.size)(IrType.Any)
             else args.map(convertType)
-          IrType.Ref(pkg, alias.getSimpleName, finalArgs)
+          IrType.Ref(pkg, "", alias.getSimpleName, finalArgs)
 
-    /** Reference to a user-defined Pkl class (flat layout: top-level type in
-      * mapped package).
+    /** Reference to a user-defined Pkl class.
+      *
+      * Module classes are top-level (`Mod`); nested classes are always
+      * qualified (`Mod.Person`, see `IrType.Ref`).
       */
     private def classRef(pClass: PClass, args: List[IrType] = Nil): IrType =
-      val (pkg, _) = nameMapper.map(pClass.getModuleName)
-      val simple =
-        if pClass.isModuleClass then nameMapper.map(pClass.getModuleName)._2
-        else pClass.getSimpleName
-      IrType.Ref(pkg, simple, args)
+      val (pkg, wrapper) = nameMapper.map(pClass.getModuleName)
+      if pClass.isModuleClass then IrType.Ref(pkg, "", wrapper, args)
+      else IrType.Ref(pkg, wrapper, pClass.getSimpleName, args)
 
     // ----------------------------------------------------------------------
     // misc helpers

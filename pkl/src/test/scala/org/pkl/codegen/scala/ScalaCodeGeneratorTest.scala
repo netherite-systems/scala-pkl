@@ -80,8 +80,8 @@ class ScalaCodeGeneratorTest extends FunSuite:
     )
     val src = scalaSource(files)
     assert(src.contains("package my"), src)
-    assert(src.contains("case class Birds("), src)
-    assert(src.contains("pigeon: Person"), src)
+    assert(src.contains("case class Birds(pigeon: Birds.Person"), src)
+    assert(src.contains("object Birds:"), src)
     assert(src.contains("parrot: String"), src)
     assert(src.contains("count: Long"), src)
     assert(src.contains("maybe: Option[String]"), src)
@@ -215,10 +215,11 @@ class ScalaCodeGeneratorTest extends FunSuite:
           |""".stripMargin
     )
     val src = scalaSource(files)
+    assert(src.contains("object H:"), src)
     assert(src.contains("open class Foo("), src)
     assert(src.contains("val one: Long"), src)
     assert(src.contains("open class Bar("), src)
-    assert(src.contains("extends Foo(one)"), src)
+    assert(src.contains("extends H.Foo(one)"), src)
     assert(src.contains("abstract class Baz("), src)
     assert(src.contains("open class Qux("), src)
     assert(src.contains("def copy("), src)
@@ -358,6 +359,7 @@ class ScalaCodeGeneratorTest extends FunSuite:
     )
     assert(withDoc.contains("/**"), withDoc)
     assert(withDoc.contains("Prop comment."), withDoc)
+    assert(withDoc.contains("object Doc:"), withDoc)
     val withoutDoc =
       scalaSource(generate(ScalaCodeGeneratorOptions(), "my.doc" -> pkl))
     assert(!withoutDoc.contains("Prop comment."), withoutDoc)
@@ -420,14 +422,14 @@ class ScalaCodeGeneratorTest extends FunSuite:
     )
     assertEquals(
       scalaProps.getProperty("org.pkl.config.scala.mapper.my.mod#Foo"),
-      "my.Foo"
+      "my.Mod$Foo"
     )
     val javaProps = load(files.collectFirst {
       case (name, content) if name.contains("config/java/mapper") => content
     }.get)
     assertEquals(
       javaProps.getProperty("org.pkl.config.java.mapper.my.mod#Foo"),
-      "my.Foo"
+      "my.Mod$Foo"
     )
   }
 

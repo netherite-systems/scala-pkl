@@ -32,7 +32,7 @@ class ScalaRendererTest extends FunSuite:
     IrProperty(name, tpe, None, None)
 
   test("empty module renders object") {
-    val src = render(IrModule("my", "Mod", None, Nil, Nil))
+    val src = render(IrModule("my", "Mod", None, None, Nil, Nil))
     assert(src.contains("package my"), src)
     assert(src.contains("object Mod"), src)
   }
@@ -57,7 +57,7 @@ class ScalaRendererTest extends FunSuite:
       false,
       None
     )
-    val src = render(IrModule("my", "Birds", Some(cls), Nil, Nil))
+    val src = render(IrModule("my", "Birds", None, Some(cls), Nil, Nil))
     assert(
       src.contains(
         "case class Birds(parrot: String, maybe: Option[String], tags: List[String], scores: Map[String, Long])"
@@ -77,18 +77,18 @@ class ScalaRendererTest extends FunSuite:
       None,
       Nil,
       List(
-        prop("one", IrType.Ref("com.foo", "Person", Nil)),
-        prop("two", IrType.Ref("com.bar", "Person", Nil))
+        prop("one", IrType.Ref("com.foo", "Mod1", "Person", Nil)),
+        prop("two", IrType.Ref("com.bar", "Mod2", "Person", Nil))
       ),
       Nil,
       false,
       None
     )
-    val src = render(IrModule("my", "M", Some(cls), Nil, Nil))
+    val src = render(IrModule("my", "M", None, Some(cls), Nil, Nil))
     // first use wins the import; the clash renders fully qualified
-    assert(src.contains("import com.foo.Person"), src)
-    assert(src.contains("one: Person"), src)
-    assert(src.contains("two: com.bar.Person"), src)
+    assert(src.contains("import com.foo.Mod1"), src)
+    assert(src.contains("one: Mod1.Person"), src)
+    assert(src.contains("two: com.bar.Mod2.Person"), src)
   }
 
   test("open hierarchy honors copy flags") {
@@ -113,7 +113,7 @@ class ScalaRendererTest extends FunSuite:
       false,
       Nil,
       IrClassKind.Open,
-      Some(IrType.Ref("", "Foo", Nil)),
+      Some(IrType.Ref("my", "H", "Foo", Nil)),
       List("one"),
       List(prop("two", IrType.Str)),
       List(prop("one", IrType.Long)),
@@ -126,10 +126,11 @@ class ScalaRendererTest extends FunSuite:
         )
       )
     )
-    val src = render(IrModule("my", "H", None, List(foo, bar), Nil))
+    val src = render(IrModule("my", "H", None, None, List(foo, bar), Nil))
+    assert(src.contains("object H:"), src)
     assert(
       src.contains(
-        "open class Bar(one: Long, val two: String) extends Foo(one):"
+        "open class Bar(one: Long, val two: String) extends H.Foo(one):"
       ),
       src
     )
@@ -161,7 +162,7 @@ class ScalaRendererTest extends FunSuite:
       false,
       None
     )
-    val src = render(IrModule("", "M", Some(cls), Nil, Nil))
+    val src = render(IrModule("", "M", None, Some(cls), Nil, Nil))
     assert(!src.contains("package "), src)
     assert(src.contains("java.util.Arrays.equals(this.bytes, o.bytes)"), src)
     assert(src.contains("this.regex.pattern != o.regex.pattern"), src)
@@ -190,7 +191,7 @@ class ScalaRendererTest extends FunSuite:
         )
       )
     )
-    val src = render(IrModule("my", "M", None, Nil, decls))
+    val src = render(IrModule("my", "M", None, None, Nil, decls))
     assert(src.contains("enum Kind(val value: String):"), src)
     assert(src.contains("case BARN_OWL extends Kind(\"Barn Owl\")"), src)
     assert(src.contains("override def toString: String = value"), src)
@@ -218,14 +219,54 @@ class ScalaRendererTest extends FunSuite:
         addGeneratedAnnotation = true
       )
     )
-      .renderModule(IrModule("my", "M", Some(cls), Nil, Nil))
+      .renderModule(IrModule("my", "M", None, Some(cls), Nil, Nil))
     assert(withDoc.contains("/** Class comment. */"), withDoc)
     assert(withDoc.contains("/** Prop comment. */ `type`: String"), withDoc)
     assert(withDoc.contains("@deprecated(\"do not use\", \"\")"), withDoc)
     assert(withDoc.contains("@Generated"), withDoc)
     assert(withDoc.contains("extends Serializable"), withDoc)
 
-    val plain = render(IrModule("my", "M", Some(cls), Nil, Nil))
+    val plain = render(IrModule("my", "M", None, Some(cls), Nil, Nil))
     assert(!plain.contains("Class comment."), plain)
     assert(plain.contains("`type`: String"), plain)
+  }
+
+  test("module class gets a companion holding the nested classes") {
+    val person = IrClass(
+      "Person",
+      None,
+      None,
+      false,
+      Nil,
+      IrClassKind.Case,
+      None,
+      Nil,
+      List(prop("name", IrType.Str)),
+      Nil,
+      false,
+      None
+    )
+    val mod = IrClass(
+      "Birds",
+      None,
+      None,
+      false,
+      Nil,
+      IrClassKind.Case,
+      None,
+      Nil,
+      List(prop("pigeon", IrType.Ref("my", "Birds", "Person", Nil))),
+      Nil,
+      false,
+      None
+    )
+    val src =
+      render(IrModule("my", "Birds", None, Some(mod), List(person), Nil))
+    // companion holds the nested class; the module class references it qualified
+    // (the companion class cannot see the companion object's members unqualified)
+    assert(src.contains("case class Birds(pigeon: Birds.Person)"), src)
+    assert(src.contains("object Birds:"), src)
+    assert(src.contains("case class Person(name: String)"), src)
+    // same-package wrapper reference needs no import
+    assert(!src.contains("import my.Birds"), src)
   }

@@ -31,9 +31,9 @@ import scala.jdk.CollectionConverters._
   * `KotlinCodeGenerator` from `pkl-codegen-kotlin` with three deliberate
   * divergences:
   *
-  *   - all types are emitted as **top-level** declarations (no `object Mod`
-  *     wrapper); nested Pkl classes become top-level `case` classes in the same
-  *     package,
+  *   - Pkl classes nest inside the `object Mod` wrapper (or the module class's
+  *     companion when the module has properties), mirroring Kotlin; enums and
+  *     type aliases stay top-level,
   *   - Pkl nullable types map to **`Option[T]`** instead of nullable
   *     references,
   *   - code is emitted with a plain string builder instead of a codegen AST
@@ -100,13 +100,15 @@ final class ScalaCodeGenerator(
     sb.append(IoUtils.encodePath(className)).append(".scala")
     sb.result()
 
-  /** Flat JVM name: every generated type is top-level, so no `$` nesting. */
+  /** JVM name: the module class is top-level, nested classes live in the
+    * wrapper object (`my.Mod$Person`, mirroring Kotlin's `Mod$Person`).
+    */
   private def jvmName(pClass: PClass): String =
-    val (packageName, _) = nameMapper.map(pClass.getModuleName)
-    val simple =
-      if pClass.isModuleClass then nameMapper.map(pClass.getModuleName)._2
-      else pClass.getSimpleName
-    if packageName.isEmpty then simple else s"$packageName.$simple"
+    val (packageName, wrapper) = nameMapper.map(pClass.getModuleName)
+    val qualified =
+      if pClass.isModuleClass then wrapper
+      else s"$wrapper$$${pClass.getSimpleName}"
+    if packageName.isEmpty then qualified else s"$packageName.$qualified"
 
   def scalaFile: String =
     if moduleSchema.getModuleUri.getScheme == "pkl" then

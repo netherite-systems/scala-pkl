@@ -35,21 +35,26 @@ final class Emitter(val indent: String):
   def addImport(fqn: String): Unit =
     importSet += fqn
 
-  /** Renders a reference to `simple` in `pkg`.
+  /** Renders a reference to type `inner` in `pkg`, nested in `outer` (possibly
+    * empty).
     *
-    * First use of a simple name wins the import; later clashes with a different
-    * package render as fully qualified names.
+    * Nested references always render qualified (`Outer.Inner`). First use of a
+    * simple name wins the import (`pkg.Outer`, or `pkg.inner` when top-level);
+    * later clashes with a different package render as fully qualified names.
+    * Same-package imports are filtered in [[result]].
     */
-  def reference(pkg: String, simple: String): String =
-    if pkg.isEmpty then simple
+  def reference(pkg: String, outer: String, inner: String): String =
+    val full = if outer.isEmpty then inner else s"$outer.$inner"
+    val importee = if outer.isEmpty then s"$pkg.$inner" else s"$pkg.$outer"
+    if pkg.isEmpty then full
     else
-      simpleToPackage.get(simple) match
+      simpleToPackage.get(inner) match
         case None =>
-          simpleToPackage(simple) = pkg
-          addImport(s"$pkg.$simple")
-          simple
-        case Some(existing) if existing == pkg => simple
-        case _                                 => s"$pkg.$simple"
+          simpleToPackage(inner) = pkg
+          addImport(importee)
+          full
+        case Some(existing) if existing == pkg => full
+        case _                                 => s"$pkg.$full"
 
   def emit(line: String = ""): Unit =
     if line.isEmpty then body.append("\n")
