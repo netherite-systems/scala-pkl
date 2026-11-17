@@ -21,6 +21,6 @@ jobs:
       - name: Scala Native libraries
         run: sudo apt-get update && sudo apt-get install -y clang libunwind-dev libgc-dev zlib1g-dev
       - name: Format
-        run: sbt -batch scalafmtCheckAll scalafmtSbtCheck
+        run: sbt -batch "scalafmtCheckAll; scalafmtSbtCheck"
       - name: Test
-        run: sbt -batch coreJVM/test pkl/test coreNative/test pklSbt/scripted coreJS/Test/fastLinkJS
+        run: sbt -batch "coreJVM/test; pkl/test; coreNative/test; pklSbt/scripted; coreJS/Test/fastLinkJS"
