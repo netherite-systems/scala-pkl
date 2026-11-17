@@ -34,7 +34,7 @@ forces execution. Separate commands with `;` inside one `-batch` string.
 
 ```scala
 // project/plugins.sbt
-addSbtPlugin("org.pkl-lang" % "pkl-sbt" % version)
+addSbtPlugin("io.github.netherite-systems" % "pkl-sbt" % version)
 // build.sbt
 lazy val app = project.enablePlugins(PklPlugin).settings(
   pklGenerators += PklGeneratorSpec(
@@ -49,7 +49,7 @@ lazy val app = project.enablePlugins(PklPlugin).settings(
 
 ```scala
 // build.sc
-import $ivy.`org.pkl-lang::mill-pkl:0.1.0`
+import $ivy.`io.github.netherite-systems::mill-pkl:0.1.0`
 import org.pkl.mill.PklScalaModule
 
 object app extends ScalaModule with PklScalaModule {

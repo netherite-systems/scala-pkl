@@ -6,3 +6,5 @@ project/project/
 .idea/
 *.class
 *.semanticdb
+
+.sonatype-credentials

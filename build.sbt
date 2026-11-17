@@ -3,15 +3,60 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 val scala3 = "3.3.8"
 val pklVersion = "0.31.1"
 
-ThisBuild / organization := "org.pkl-lang"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / organization := "io.github.netherite-systems"
+ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalaVersion := scala3
+
+inThisBuild(
+  List(
+    homepage := Some(url("https://github.com/netherite-systems/scala-pkl")),
+    licenses := List(
+      "Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")
+    ),
+    organizationName := "NetheriteSystems",
+    organizationHomepage := Some(
+      url("https://github.com/netherite-systems/scala-pkl")
+    ),
+    scmInfo := Some(
+      ScmInfo(
+        url("https://github.com/netherite-systems/scala-pkl"),
+        "scm:git:git@github.com:netherite-systems/scala-pkl.git"
+      )
+    ),
+    developers := List(
+      Developer(
+        "nojipiz",
+        "Orlando Vargas",
+        "nojipiz@protonmail.com",
+        url("https://github.com/nojipiz")
+      )
+    ),
+    description := "scala-pkl",
+    pomIncludeRepository := { _ => false },
+    publishMavenStyle := true,
+    // sbt-ci-release owns `publishTo` (bundle staging / snapshots).
+    // Project-local Sonatype token for manual runs; CI uses env credentials.
+    credentials ++= {
+      val localCreds = file(".sonatype-credentials")
+      if (localCreds.exists()) Seq(Credentials(localCreds)) else Nil
+    }
+  )
+)
 
 // Needed by scalafix (RemoveUnused, OrganizeImports) on every project.
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 // Required by OrganizeImports (removeUnused); harmless everywhere, including JS/Native.
 ThisBuild / scalacOptions += "-Wunused:imports"
+
+// Root aggregate is never published (sbt-ci-release publishes per-module).
+lazy val root = project
+  .in(file("."))
+  .aggregate(core.jvm, core.js, core.native, pkl, pklSbt, millPkl)
+  .settings(
+    name := "scala-pkl",
+    publish / skip := true
+  )
 
 // Pure rendering core: no pkl-core dependency, cross-built for JVM, Scala.js and Scala Native.
 lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
