@@ -1,1 +1,1 @@
-addSbtPlugin("org.pkl-lang" % "pkl-sbt" % "0.1.0-SNAPSHOT")
+addSbtPlugin("io.github.netherite-systems" % "pkl-sbt" % sys.props("plugin.version"))

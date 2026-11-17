@@ -99,6 +99,11 @@ lazy val pklSbt = project
   .settings(
     name := "pkl-sbt",
     sbtPlugin := true,
+    // Scripted test builds resolve the plugin under test via this property
+    // (see pkl-sbt/src/sbt-test/.../project/plugins.sbt).
+    scriptedLaunchOpts := scriptedLaunchOpts.value ++ Seq(
+      "-Dplugin.version=" + version.value
+    ),
     // sbt plugins compile against sbt's own API jars; our 3.3.8 scalac cannot read sbt 2.0.11's
     // 3.8.x TASTy (forward-incompatible), so build the plugin with sbt's Scala version.
     // (The pkl project dep stays 3.3.8: newer scalac reads older TASTy fine.)
